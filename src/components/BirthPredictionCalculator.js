@@ -80,12 +80,42 @@ const BirthPredictionCalculator = () => {
     'ரேவதி': { start: 8 }
   };
 
+  // Special boundary cases that require explicit handling
+  const specialBoundaries = {
+    130: { nakshatra: 'மகம்', pada: 3 } // 130° is Magha Pada 3
+  };
+
   const getNakshatra = (degrees) => {
-    const totalMinutes = degrees * 60;
-    const nakshatraIndex = Math.floor(totalMinutes / 800);
-    const pada = Math.floor((totalMinutes % 800) / 200) + 1;
+    // Normalize degrees to 0-360 range
+    const normalizedDegrees = degrees === 360 ? 0 : degrees;
+    
+    // Check if we're exactly on a special boundary
+    if (specialBoundaries[normalizedDegrees]) {
+      return {
+        name: specialBoundaries[normalizedDegrees].nakshatra,
+        pada: specialBoundaries[normalizedDegrees].pada
+      };
+    }
+    
+    // Each nakshatra spans 13°20' (13.333333°)
+    const nakshatraIndex = Math.floor(normalizedDegrees / 13.333333);
+    const nakshatraStartDegree = nakshatraIndex * 13.333333;
+    const positionInNakshatra = normalizedDegrees - nakshatraStartDegree;
+    
+    // Each pada spans 3°20' (3.333333°)
+    let pada;
+    if (positionInNakshatra < 3.333333) {
+      pada = 1;
+    } else if (positionInNakshatra < 6.666667) {
+      pada = 2;
+    } else if (positionInNakshatra < 10) {
+      pada = 3;
+    } else {
+      pada = 4;
+    }
+    
     return {
-      name: nakshatras[nakshatraIndex],
+      name: nakshatras[nakshatraIndex % 27],
       pada: pada
     };
   };
@@ -150,16 +180,20 @@ const BirthPredictionCalculator = () => {
   };
 
   const getD9Rasi = (degrees, minutes, seconds) => {
-    // Convert to total minutes for precise calculation
-    const totalMinutes = (degrees * 60) + minutes + (seconds / 60);
-    const nakshatraIndex = Math.floor(totalMinutes / 800);
-    const padaIndex = Math.floor((totalMinutes % 800) / 200);
+    // Convert to total degrees for precise calculation
+    const totalDegrees = degrees + (minutes / 60) + (seconds / 3600);
     
-    const nakshatra = nakshatras[nakshatraIndex];
-    const mapping = nakshatraD9Mapping[nakshatra];
+    // Get the nakshatra and pada
+    const nakshatra = getNakshatra(totalDegrees);
     
+    // Get the mapping for this nakshatra
+    const mapping = nakshatraD9Mapping[nakshatra.name];
+    
+    // Calculate the D9 rasi index
     const baseRasiIndex = mapping.start;
-    return rasis[baseRasiIndex + padaIndex];
+    const d9RasiIndex = baseRasiIndex + (nakshatra.pada - 1);
+    
+    return rasis[d9RasiIndex];
   };
 
   const getPrediction = (d1Rasi, d9Rasi) => {
@@ -194,6 +228,38 @@ const BirthPredictionCalculator = () => {
 
   const printResults = () => {
     window.print();
+  };
+
+  // Function to get D9 group description
+  const getD9GroupDescription = (nakshatra, pada) => {
+    if (nakshatraD9Mapping[nakshatra].start === 0) {
+      // Group 1: Mesha to Kataka
+      switch(pada) {
+        case 1: return 'மேஷம்';
+        case 2: return 'ரிஷபம்';
+        case 3: return 'மிதுனம்';
+        case 4: return 'கடகம்';
+        default: return 'மேஷம் - மிதுனம்';
+      }
+    } else if (nakshatraD9Mapping[nakshatra].start === 4) {
+      // Group 2: Simha to Vrichika
+      switch(pada) {
+        case 1: return 'சிம்மம்';
+        case 2: return 'கன்னி';
+        case 3: return 'துலாம்';
+        case 4: return 'விருச்சிகம்';
+        default: return 'சிம்மம் - விருச்சிகம்';
+      }
+    } else {
+      // Group 3: Dhanusu to Meena
+      switch(pada) {
+        case 1: return 'தனுசு';
+        case 2: return 'மகரம்';
+        case 3: return 'கும்பம்';
+        case 4: return 'மீனம்';
+        default: return 'தனுசு - மீனம்';
+      }
+    }
   };
 
   return (
@@ -289,7 +355,7 @@ const BirthPredictionCalculator = () => {
                 className="flex items-center px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition"
               >
                 <RefreshCcw className="w-4 h-4 mr-2" />
-                அழி
+                Reset
               </button>
             </div>
           </div>
@@ -314,7 +380,7 @@ const BirthPredictionCalculator = () => {
                       className="flex items-center px-3 py-1 bg-blue-100 rounded hover:bg-blue-200 transition text-sm"
                     >
                       <Printer className="w-4 h-4 mr-1" />
-                      அச்சிடு
+                      Print
                     </button>
                   </div>
                   
@@ -371,9 +437,7 @@ const BirthPredictionCalculator = () => {
                           <div className="pt-2">
                             <h4 className="font-semibold">D9 குழு:</h4>
                             <p className="text-sm">
-                              {nakshatraD9Mapping[nakshatra.name].start === 0 ? 'மேஷம் - கடகம்' :
-                               nakshatraD9Mapping[nakshatra.name].start === 4 ? 'சிம்மம் - விருச்சிகம்' :
-                               'தனுசு - மீனம்'}
+                              {getD9GroupDescription(nakshatra.name, nakshatra.pada)}
                             </p>
                           </div>
                         </div>
