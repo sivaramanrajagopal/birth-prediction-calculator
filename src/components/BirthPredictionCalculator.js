@@ -85,15 +85,18 @@ const BirthPredictionCalculator = () => {
     130: { nakshatra: 'மகம்', pada: 3 } // 130° is Magha Pada 3
   };
 
-  const getNakshatra = (degrees) => {
+  const getNakshatra = (degrees, minutes = 0, seconds = 0) => {
+    // Convert to total degrees for precise calculation
+    const totalDegrees = degrees + (minutes / 60) + (seconds / 3600);
+    
     // Normalize degrees to 0-360 range
-    const normalizedDegrees = degrees === 360 ? 0 : degrees;
+    const normalizedDegrees = totalDegrees === 360 ? 0 : totalDegrees;
     
     // Check if we're exactly on a special boundary
-    if (specialBoundaries[normalizedDegrees]) {
+    if (specialBoundaries[Math.floor(normalizedDegrees)]) {
       return {
-        name: specialBoundaries[normalizedDegrees].nakshatra,
-        pada: specialBoundaries[normalizedDegrees].pada
+        name: specialBoundaries[Math.floor(normalizedDegrees)].nakshatra,
+        pada: specialBoundaries[Math.floor(normalizedDegrees)].pada
       };
     }
     
@@ -164,8 +167,8 @@ const BirthPredictionCalculator = () => {
     }
 
     // Handle degrees overflow
-    if (totalDegrees > 360) {
-      totalDegrees = totalDegrees - 360;
+    if (totalDegrees >= 360) {
+      totalDegrees = totalDegrees % 360;
     }
 
     return { 
@@ -191,7 +194,7 @@ const BirthPredictionCalculator = () => {
     
     // Calculate the D9 rasi index
     const baseRasiIndex = mapping.start;
-    const d9RasiIndex = baseRasiIndex + (nakshatra.pada - 1);
+    const d9RasiIndex = (baseRasiIndex + (nakshatra.pada - 1)) % 12;
     
     return rasis[d9RasiIndex];
   };
@@ -230,36 +233,18 @@ const BirthPredictionCalculator = () => {
     window.print();
   };
 
-  // Function to get D9 group description
+  // Function to get D9 group description for detailed display
   const getD9GroupDescription = (nakshatra, pada) => {
-    if (nakshatraD9Mapping[nakshatra].start === 0) {
-      // Group 1: Mesha to Kataka
-      switch(pada) {
-        case 1: return 'மேஷம்';
-        case 2: return 'ரிஷபம்';
-        case 3: return 'மிதுனம்';
-        case 4: return 'கடகம்';
-        default: return 'மேஷம் - மிதுனம்';
-      }
-    } else if (nakshatraD9Mapping[nakshatra].start === 4) {
-      // Group 2: Simha to Vrichika
-      switch(pada) {
-        case 1: return 'சிம்மம்';
-        case 2: return 'கன்னி';
-        case 3: return 'துலாம்';
-        case 4: return 'விருச்சிகம்';
-        default: return 'சிம்மம் - விருச்சிகம்';
-      }
-    } else {
-      // Group 3: Dhanusu to Meena
-      switch(pada) {
-        case 1: return 'தனுசு';
-        case 2: return 'மகரம்';
-        case 3: return 'கும்பம்';
-        case 4: return 'மீனம்';
-        default: return 'தனுசு - மீனம்';
-      }
-    }
+    // Get the mapping for this nakshatra
+    const mapping = nakshatraD9Mapping[nakshatra];
+    if (!mapping) return '';
+    
+    // Calculate the D9 rasi index
+    const baseRasiIndex = mapping.start;
+    const d9RasiIndex = (baseRasiIndex + (pada - 1)) % 12;
+    
+    // Return the Rasi name
+    return rasis[d9RasiIndex].name;
   };
 
   return (
@@ -364,7 +349,7 @@ const BirthPredictionCalculator = () => {
           {Object.values(selectedPlanets).some(p => p.degree) && (() => {
             const total = calculateTotal();
             const d1Rasi = getRasi(total.degrees);
-            const nakshatra = getNakshatra(total.degrees);
+            const nakshatra = getNakshatra(total.degrees, total.minutes, total.seconds);
             const d9Rasi = getD9Rasi(total.degrees, total.minutes, total.seconds);
 
             if (!d1Rasi || !d9Rasi) return null;
@@ -435,9 +420,9 @@ const BirthPredictionCalculator = () => {
                           <p className="text-sm">நட்சத்திரம்: {nakshatra.name}</p>
                           <p className="text-sm">பாதம்: {nakshatra.pada}</p>
                           <div className="pt-2">
-                            <h4 className="font-semibold">D9 குழு:</h4>
+                            <h4 className="font-semibold">D9 ராசி:</h4>
                             <p className="text-sm">
-                              {getD9GroupDescription(nakshatra.name, nakshatra.pada)}
+                              {d9Rasi.name}
                             </p>
                           </div>
                         </div>
