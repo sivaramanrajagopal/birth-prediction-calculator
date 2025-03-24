@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertCircle, RefreshCcw, Printer, ChevronDown, ChevronUp } from 'lucide-react';
+import { RefreshCcw, Printer, ChevronDown, ChevronUp } from 'lucide-react';
 
 const BirthPredictionCalculator = () => {
   const [gender, setGender] = useState('');
@@ -13,14 +13,6 @@ const BirthPredictionCalculator = () => {
 
   const malePlanets = ['சூரியன்', 'சுக்கிரன்', 'குரு'];
   const femalePlanets = ['சந்திரன்', 'செவ்வாய்', 'குரு'];
-
-  const planetDescriptions = {
-    'சூரியன்': 'ஆத்ம காரகன்',
-    'சுக்கிரன்': 'காம காரகன்',
-    'குரு': 'புத்திர காரகன்',
-    'சந்திரன்': 'மன காரகி',
-    'செவ்வாய்': 'சக்தி காரகி'
-  };
 
   const nakshatras = [
     'அஸ்வினி', 'பரணி', 'கார்த்திகை', 'ரோகிணி', 'மிருகசீரிஷம்', 'திருவாதிரை',
@@ -45,73 +37,30 @@ const BirthPredictionCalculator = () => {
     { name: 'மீனம்', start: 330, end: 360, gender: 'female' }
   ];
 
-  const nakshatraD9Mapping = {
-    // Group 1: Mesha to Kataka
-    'அஸ்வினி': { start: 0 },     // Mesha to Kataka
-    'மகம்': { start: 0 },
-    'மூலம்': { start: 0 },
-    'ரோகிணி': { start: 0 },
-    'ஹஸ்தம்': { start: 0 },
-    'திருவோணம்': { start: 0 },
-    'புனர்பூசம்': { start: 0 },
-    'விசாகம்': { start: 0 },
-    'பூரட்டாதி': { start: 0 },
+  // Define nakshatra groups for D9 mapping
+  const nakshatraGroup1 = ['அஸ்வினி', 'மகம்', 'மூலம்', 'ரோகிணி', 'ஹஸ்தம்', 'திருவோணம்', 'புனர்பூசம்', 'விசாகம்', 'பூரட்டாதி'];
+  const nakshatraGroup2 = ['பரணி', 'பூரம்', 'பூராடம்', 'மிருகசீரிஷம்', 'சித்திரை', 'அவிட்டம்', 'பூசம்', 'அனுஷம்', 'உத்திரட்டாதி'];
+  const nakshatraGroup3 = ['கார்த்திகை', 'உத்திரம்', 'உத்திராடம்', 'திருவாதிரை', 'சுவாதி', 'சதயம்', 'ஆயில்யம்', 'கேட்டை', 'ரேவதி'];
 
-    // Group 2: Simha to Vrichika
-    'பரணி': { start: 4 },      // Simha to Vrichika
-    'பூரம்': { start: 4 },
-    'பூராடம்': { start: 4 },
-    'மிருகசீரிஷம்': { start: 4 },
-    'சித்திரை': { start: 4 },
-    'அவிட்டம்': { start: 4 },
-    'பூசம்': { start: 4 },
-    'அனுஷம்': { start: 4 },
-    'உத்திரட்டாதி': { start: 4 },
-
-    // Group 3: Dhanusu to Meena
-    'கார்த்திகை': { start: 8 }, // Dhanusu to Meena
-    'உத்திரம்': { start: 8 },
-    'உத்திராடம்': { start: 8 },
-    'திருவாதிரை': { start: 8 },
-    'சுவாதி': { start: 8 },
-    'சதயம்': { start: 8 },
-    'ஆயில்யம்': { start: 8 },
-    'கேட்டை': { start: 8 },
-    'ரேவதி': { start: 8 }
-  };
-
-  // Special boundary cases that require explicit handling
-  const specialBoundaries = {
-    130: { nakshatra: 'மகம்', pada: 3 } // 130° is Magha Pada 3
-  };
-
+  // FIXED getNakshatra function using integer minutes-based calculation to avoid floating point issues
   const getNakshatra = (degrees, minutes = 0, seconds = 0) => {
-    // Convert to total degrees for precise calculation
-    const totalDegrees = degrees + (minutes / 60) + (seconds / 3600);
+    // Convert everything to minutes for precise integer-based calculation
+    const totalMinutes = (degrees * 60) + minutes + (seconds / 60);
     
-    // Normalize degrees to 0-360 range
-    const normalizedDegrees = totalDegrees === 360 ? 0 : totalDegrees;
+    // Each nakshatra is 13°20' = 800 minutes
+    const nakshatraIndex = Math.floor(totalMinutes / 800);
     
-    // Check if we're exactly on a special boundary
-    if (specialBoundaries[Math.floor(normalizedDegrees)]) {
-      return {
-        name: specialBoundaries[Math.floor(normalizedDegrees)].nakshatra,
-        pada: specialBoundaries[Math.floor(normalizedDegrees)].pada
-      };
-    }
+    // Calculate position within nakshatra
+    const nakshatraStartMinutes = nakshatraIndex * 800;
+    const positionInNakshatraMinutes = totalMinutes - nakshatraStartMinutes;
     
-    // Each nakshatra spans 13°20' (13.333333°)
-    const nakshatraIndex = Math.floor(normalizedDegrees / 13.333333);
-    const nakshatraStartDegree = nakshatraIndex * 13.333333;
-    const positionInNakshatra = normalizedDegrees - nakshatraStartDegree;
-    
-    // Each pada spans 3°20' (3.333333°)
+    // Each pada is 3°20' = 200 minutes
     let pada;
-    if (positionInNakshatra < 3.333333) {
+    if (positionInNakshatraMinutes <= 200) {
       pada = 1;
-    } else if (positionInNakshatra < 6.666667) {
+    } else if (positionInNakshatraMinutes <= 400) {
       pada = 2;
-    } else if (positionInNakshatra < 10) {
+    } else if (positionInNakshatraMinutes <= 600) {
       pada = 3;
     } else {
       pada = 4;
@@ -138,7 +87,6 @@ const BirthPredictionCalculator = () => {
     let totalMinutes = 0;
     let totalSeconds = 0;
 
-    // First add all values separately
     Object.values(selectedPlanets).forEach(planet => {
       if (planet.degree && planet.minutes && planet.seconds) {
         totalDegrees += parseInt(planet.degree);
@@ -152,24 +100,19 @@ const BirthPredictionCalculator = () => {
       }
     });
 
-    // Handle seconds overflow to minutes
     if (totalSeconds >= 60) {
       const additionalMinutes = Math.floor(totalSeconds / 60);
       totalMinutes += additionalMinutes;
       totalSeconds = totalSeconds % 60;
     }
 
-    // Handle minutes overflow to degrees
     if (totalMinutes >= 60) {
       const additionalDegrees = Math.floor(totalMinutes / 60);
       totalDegrees += additionalDegrees;
       totalMinutes = totalMinutes % 60;
     }
 
-    // Handle degrees overflow
-    if (totalDegrees >= 360) {
-      totalDegrees = totalDegrees % 360;
-    }
+    totalDegrees = totalDegrees % 360;
 
     return { 
       degrees: totalDegrees, 
@@ -182,21 +125,35 @@ const BirthPredictionCalculator = () => {
     return rasis.find(rasi => degrees >= rasi.start && degrees < rasi.end);
   };
 
+  // Updated getD9Rasi function using the integer-based nakshatra-pada mapping
   const getD9Rasi = (degrees, minutes, seconds) => {
-    // Convert to total degrees for precise calculation
-    const totalDegrees = degrees + (minutes / 60) + (seconds / 3600);
+    const nakshatra = getNakshatra(degrees, minutes, seconds);
     
-    // Get the nakshatra and pada
-    const nakshatra = getNakshatra(totalDegrees);
-    
-    // Get the mapping for this nakshatra
-    const mapping = nakshatraD9Mapping[nakshatra.name];
-    
-    // Calculate the D9 rasi index
-    const baseRasiIndex = mapping.start;
-    const d9RasiIndex = (baseRasiIndex + (nakshatra.pada - 1)) % 12;
-    
-    return rasis[d9RasiIndex];
+    if (nakshatraGroup1.includes(nakshatra.name)) {
+      switch(nakshatra.pada) {
+        case 1: return rasis[0]; // Aries
+        case 2: return rasis[1]; // Taurus
+        case 3: return rasis[2]; // Gemini
+        case 4: return rasis[3]; // Cancer
+        default: return rasis[0];
+      }
+    } else if (nakshatraGroup2.includes(nakshatra.name)) {
+      switch(nakshatra.pada) {
+        case 1: return rasis[4]; // Leo
+        case 2: return rasis[5]; // Virgo
+        case 3: return rasis[6]; // Libra
+        case 4: return rasis[7]; // Scorpio
+        default: return rasis[4];
+      }
+    } else { // Group 3
+      switch(nakshatra.pada) {
+        case 1: return rasis[8];  // Sagittarius
+        case 2: return rasis[9];  // Capricorn
+        case 3: return rasis[10]; // Aquarius
+        case 4: return rasis[11]; // Pisces
+        default: return rasis[8];
+      }
+    }
   };
 
   const getPrediction = (d1Rasi, d9Rasi) => {
@@ -231,20 +188,6 @@ const BirthPredictionCalculator = () => {
 
   const printResults = () => {
     window.print();
-  };
-
-  // Function to get D9 group description for detailed display
-  const getD9GroupDescription = (nakshatra, pada) => {
-    // Get the mapping for this nakshatra
-    const mapping = nakshatraD9Mapping[nakshatra];
-    if (!mapping) return '';
-    
-    // Calculate the D9 rasi index
-    const baseRasiIndex = mapping.start;
-    const d9RasiIndex = (baseRasiIndex + (pada - 1)) % 12;
-    
-    // Return the Rasi name
-    return rasis[d9RasiIndex].name;
   };
 
   return (
@@ -463,17 +406,6 @@ const BirthPredictionCalculator = () => {
                             <div className="text-center p-1 bg-gray-100 rounded">பாதம் 2: கன்னி</div>
                             <div className="text-center p-1 bg-gray-100 rounded">பாதம் 3: துலாம்</div>
                             <div className="text-center p-1 bg-gray-100 rounded">பாதம் 4: விருச்சிகம்</div>
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <h4 className="font-semibold">குழு 3 (தனுசு - மீனம்):</h4>
-                          <p className="text-sm">கார்த்திகை, உத்திரம், உத்திராடம், திருவாதிரை, சுவாதி, சதயம், ஆயில்யம், கேட்டை, ரேவதி</p>
-                          <div className="grid grid-cols-4 gap-2 mt-2 text-xs">
-                            <div className="text-center p-1 bg-gray-100 rounded">பாதம் 1: தனுசு</div>
-                            <div className="text-center p-1 bg-gray-100 rounded">பாதம் 2: மகரம்</div>
-                            <div className="text-center p-1 bg-gray-100 rounded">பாதம் 3: கும்பம்</div>
-                            <div className="text-center p-1 bg-gray-100 rounded">பாதம் 4: மீனம்</div>
                           </div>
                         </div>
                       </div>
